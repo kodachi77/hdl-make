@@ -25,12 +25,12 @@
 
 
 from __future__ import absolute_import
-from .make_syn import ToolSyn
-from hdlmake.srcfile import VHDLFile, VerilogFile, SVFile, TCLFile
+from .makefilesyn import MakefileSyn
+from ..sourcefiles.srcfile import VHDLFile, VerilogFile, SVFile, TCLFile
 import logging
 
 
-class ToolXilinx(ToolSyn):
+class ToolXilinx(MakefileSyn):
 
     """Class providing the interface for Xilinx Vivado synthesis"""
 
@@ -75,19 +75,19 @@ $(TCL_CLOSE)'''
 
     def __init__(self):
         super(ToolXilinx, self).__init__()
-        self._hdl_files.update(ToolXilinx.HDL_FILES)
-        self._supported_files.update(ToolXilinx.SUPPORTED_FILES)
-        self._clean_targets.update(ToolXilinx.CLEAN_TARGETS)
         self._tcl_controls.update(ToolXilinx.TCL_CONTROLS)
 
     def _get_properties(self):
         """Create the property list"""
         syn_properties = self.manifest_dict.get("syn_properties")
+        language = self.manifest_dict.get("language")
+        if language == None:
+            language = "vhdl"
         properties = [
             ['part', '$(SYN_DEVICE)' +
                      '$(SYN_PACKAGE)' +
                      '$(SYN_GRADE)', 'current_project'],
-            ['target_language', 'VHDL', 'current_project'],
+            ['target_language', language, 'current_project'],
             ['top', '$(TOP_MODULE)', 'get_property srcset [current_run]']]
         fetchto = self.manifest_dict.get("fetchto")
         if not fetchto is None:

@@ -23,8 +23,9 @@
 
 from __future__ import absolute_import
 import os
-from hdlmake.util import path as path_utils
-from hdlmake.util import shell
+from ..util import path as path_utils
+from ..util import shell
+from subprocess import PIPE, Popen
 import logging
 from .fetcher import Fetcher
 
@@ -35,20 +36,17 @@ class Git(Fetcher):
     used to fetch and handle Git repositories"""
 
     def __init__(self):
-        pass
+        self.submodule = False
 
-    @staticmethod
-    def get_git_toplevel():
-        """Get the top level for the Git repository"""
-        return shell.run("git rev-parse --show-toplevel")
-
-    @staticmethod
-    def get_submodule_commit(submodule_dir):
+    def get_submodule_commit(self, submodule_dir):
         """Get the commit for a repository if defined in Git submodules"""
         status_line = shell.run("git submodule status %s" % submodule_dir)
         status_line = status_line.split()
-        if len(status_line) == 2:
-            return status_line[0][1:]
+        if len(status_line) == 2 or len(status_line) == 3:
+            if status_line[0][0] in ['-', '+', 'U']:
+                return status_line[0][1:]
+            else:
+                return status_line[0]
         else:
             return None
 
@@ -59,16 +57,9 @@ class Git(Fetcher):
             os.mkdir(fetchto)
         basename = path_utils.url_basename(module.url)
         mod_path = os.path.join(fetchto, basename)
-        if basename.endswith(".git"):
-            basename = basename[:-4]  # remove trailing .git
-        if not module.isfetched:
-            logging.info("Fetching git module %s", mod_path)
-            cmd = "(cd {0} && git clone {1})"
-            cmd = cmd.format(fetchto, module.url)
-            if os.system(cmd) != 0:
-                return False
-        else:
-            logging.info("Updating git module %s", mod_path)
+        assert not module.isfetched
+        logging.info("Fetching git module %s", mod_path)
+        shell.run("(cd {0} && git clone {1})".format(fetchto, module.url))
         checkout_id = None
         if module.branch is not None:
             checkout_id = module.branch
@@ -85,12 +76,17 @@ class Git(Fetcher):
             cmd = cmd.format(mod_path, checkout_id)
             if os.system(cmd) != 0:
                 return False
+        if self.submodule and not module.isfetched:
+            cmd = ("(cd {0} && git submodule init &&"
+                "git submodule update --recursive)")
+            cmd = cmd.format(mod_path)
+            if os.system(cmd) != 0:
+                return False
         module.isfetched = True
         module.path = mod_path
         return True
 
-    @staticmethod
-    def check_git_commit(path):
-        """Get the revision number for the Git repository at path"""
-        git_cmd = 'git log -1 --format="%H" | cut -c1-32'
-        return Fetcher.check_id(path, git_cmd)
+
+class GitSM(Git):
+    def __init__(self):
+        self.submodule = True

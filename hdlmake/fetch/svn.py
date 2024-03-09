@@ -24,7 +24,7 @@
 from __future__ import absolute_import
 import os
 import logging
-from hdlmake.util import path as path_utils
+from ..util import path as path_utils
 from .fetcher import Fetcher
 
 
@@ -41,27 +41,18 @@ class Svn(Fetcher):
         fetchto = module.fetchto()
         if not os.path.exists(fetchto):
             os.mkdir(fetchto)
-        cur_dir = module.pool.top_module.path
-        os.chdir(fetchto)
         basename = path_utils.svn_basename(module.url)
         mod_path = os.path.join(fetchto, basename)
-        cmd = "svn checkout {0} " + module.basename
+        cmd = "cd {0} && svn checkout {1} " + basename
         if module.revision:
-            cmd = cmd.format(module.url + '@' + module.revision)
+            cmd = cmd.format(fetchto, module.url + '@' + module.revision)
         else:
-            cmd = cmd.format(module.url)
+            cmd = cmd.format(fetchto, module.url)
         success = True
         logging.info("Checking out module %s", mod_path)
         logging.debug(cmd)
         if os.system(cmd) != 0:
             success = False
-        os.chdir(cur_dir)
         module.isfetched = True
-        module.path = os.path.join(fetchto, module.basename)
+        module.path = mod_path
         return success
-
-    @staticmethod
-    def check_svn_revision(path):
-        """Get the revision number for the SVN repository at path"""
-        svn_cmd = "svn info 2>/dev/null | awk '{if(NR == 5) {print $2}}'"
-        return Fetcher.check_id(path, svn_cmd)

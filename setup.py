@@ -1,6 +1,9 @@
-import ez_setup
-ez_setup.use_setuptools()
-
+# Note: if pip is not installed, try to bootstrap using:
+#   python -m ensurepip --default-pip
+# Or download https://bootstrap.pypa.io/get-pip.py
+#
+# Then install setuptools:
+# python -m pip install --upgrade pip setuptools wheel
 from setuptools import (setup, find_packages)
 
 exec(open('hdlmake/_version.py').read())
@@ -21,7 +24,7 @@ setup(
    packages=find_packages(),
    entry_points={
       'console_scripts': [
-         'hdlmake = hdlmake.__main__:main',
+         'hdlmake = hdlmake.main:main',
          ], 
    },
    include_package_data=True,  # use MANIFEST.in during install

@@ -25,10 +25,10 @@
 
 
 from __future__ import absolute_import
-from .make_sim import ToolSim
-from hdlmake.srcfile import VerilogFile, VHDLFile, SVFile
+from .makefilesim import MakefileSim
+from ..sourcefiles.srcfile import VerilogFile, VHDLFile, SVFile
 
-class ToolVivadoSim(ToolSim):
+class ToolVivadoSim(MakefileSim):
 
     """Class providing the interface for Xilinx Vivado synthesis"""
 
@@ -54,15 +54,10 @@ class ToolVivadoSim(ToolSim):
 
     def __init__(self):
         super(ToolVivadoSim, self).__init__()
-        self._tool_info.update(ToolVivadoSim.TOOL_INFO)
-        self._standard_libs.extend(ToolVivadoSim.STANDARD_LIBS)
-        self._clean_targets.update(ToolVivadoSim.CLEAN_TARGETS)
-        self._simulator_controls.update(ToolVivadoSim.SIMULATOR_CONTROLS)
-        self._hdl_files.update(ToolVivadoSim.HDL_FILES)
 
     def _makefile_sim_compilation(self):
         """Generate compile simulation Makefile target for Vivado Simulator"""
         self.writeln("simulation: $(VERILOG_OBJ) $(VHDL_OBJ)")
-        self.writeln("\t\t" + ToolVivadoSim.SIMULATOR_CONTROLS['compiler'])
+        self.writeln("\t\t" + self.SIMULATOR_CONTROLS['compiler'])
         self.writeln()
         self._makefile_sim_dep_files()

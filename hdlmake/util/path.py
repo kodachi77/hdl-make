@@ -29,7 +29,7 @@ import os
 
 def url_parse(url):
     """
-    Check if link to a repo seems to be correct. Filter revision
+    Check if link to a Git repo seems to be correct. Filter revision
     number and branch
     """
     url_clean, branch, rev = None, None, None
@@ -41,6 +41,20 @@ def url_parse(url):
         url_clean = url
 
     return (url_clean, branch, rev)
+
+
+def svn_parse(url):
+    """
+    Check if link to a SVN repo seems to be correct. Filter revision
+    number
+    """
+    url_clean, rev = None, None
+    if "@" in url:
+        url_clean, rev = url.split("@")
+    else:
+        url_clean = url
+
+    return (url_clean, rev)
 
 
 def url_basename(url):
@@ -69,40 +83,6 @@ def svn_basename(url):
         return None
 
 
-def pathsplit(path, rest=None):
-    """
-    Split the provided path and return as a tuple
-    """
-    if rest is None:
-        rest = []
-    (head, tail) = os.path.split(path)
-    if len(head) < 1:
-        return [tail] + rest
-    if len(tail) < 1:
-        return [head] + rest
-    return pathsplit(head, [tail] + rest)
-
-
-def commonpath(path1, path2, common=None):
-    """
-    Return the common path for the provided paths
-    """
-    if common is None:
-        common = []
-    if len(path1) < 1:
-        return (common, path1, path2)
-    if len(path2) < 1:
-        return (common, path1, path2)
-    if path1[0] != path2[0]:
-        return (common, path1, path2)
-    return commonpath(path1[1:], path2[1:], common + [path1[0]])
-
-
-def is_rel_path(path):
-    """Check if the given path is relative"""
-    return not os.path.isabs(path)
-
-
 def is_abs_path(path):
     """Check if the given path is absolute"""
     return os.path.isabs(path)
@@ -117,7 +97,7 @@ def relpath(path1, path2=None):
     return os.path.relpath(path1, path2)
 
 
-def rel2abs(path, base=None):
+def rel2abs(path, base):
     """
     converts a relative path to an absolute path.
 
@@ -127,8 +107,6 @@ def rel2abs(path, base=None):
     The base is intelligently concatenated to the given relative path.
     @return the relative path of path from base
     """
-    if base is None:
-        base = os.getcwd()
     if os.path.isabs(path):
         return path
     retval = os.path.join(base, path)

@@ -21,11 +21,6 @@
 
 """Module providing the base class for the different code fetchers"""
 
-from __future__ import absolute_import
-import os
-from hdlmake.util import shell
-
-
 class Fetcher(object):
 
     """Base class for the code fetcher objects"""
@@ -33,13 +28,3 @@ class Fetcher(object):
     def fetch(self, module):
         """Stub method, this must be implemented by the code fetcher"""
         pass
-
-    @staticmethod
-    def check_id(path, command):
-        """Use the provided command to get the specific ID from
-        the repository at path"""
-        cur_dir = os.getcwd()
-        os.chdir(path)
-        identifier = shell.run(command)
-        os.chdir(cur_dir)
-        return identifier

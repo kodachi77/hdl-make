@@ -26,18 +26,18 @@ Makefiles, and fetching IP-Core libraries from remote repositories.
 Contribute
 ----------
 
-- Wiki Pages: http://www.ohwr.org/projects/hdl-make/wiki
-- Issue Tracker: http://www.ohwr.org/projects/hdl-make/issues
-- Source Code: http://www.ohwr.org/projects/hdl-make/repository
+- Wiki Pages: https://ohwr.org/projects/hdl-make/wiki
+- Issue Tracker: https://ohwr.org/project/hdl-make/issues
+- Source Code: https://ohwr.org/project/hdl-make
 
 
 Support
 -------
 
 If you are experiencing any issues, please let us know.
-We have a mailing list located at:
+You can find a dedicated support forum located at:
 
-- http://www.ohwr.org/mailing_list/show?project_id=hdl-make
+- https://forums.ohwr.org/c/hdl-make
 
 If you are seeking for consultancy and training services on advanced ``hdlmake`` use cases, you can get **commercial support from GL Research**, the company on charge of maintaining and developing the tool.
 
@@ -119,7 +119,7 @@ Supported Tools
 +--------------------------+-----------+------------+
 | Lattice Semi. Diamond    | Yes       | n.a.       |
 +--------------------------+-----------+------------+
-| Xilinx ISim              | Yes       | n.a.       |
+| Xilinx ISim              | n.a.      | Yes        |
 +--------------------------+-----------+------------+
 | Mentor Graphics Modelsim | n.a.      | Yes        |
 +--------------------------+-----------+------------+
@@ -173,7 +173,7 @@ As a prerequisite, you must have the following programs installed in your host m
 
 - ``python``: you need a compatible Python deployment
 - ``git``: you need git for both fetching the ``hdlmake`` code and accessing to remote HDL repositories.
-- ``svn``: svn will only be used when accessing to remote SVN HDL repositories. 
+- ``svn``: svn will only be used when accessing to remote SVN HDL repositories.
 
 .. note:: In order to support Python 2.7.x and 3.x with a single codebase, the ``six`` Python package is now required to run ``hdlmake`` 3.0 version.
 
@@ -191,7 +191,7 @@ To install directly from `PyPI <https://pypi.python.org/pypi>`_ simply run:
 .. code-block:: bash
 
    pip install hdlmake
-   
+
 Alternatively, if you have already downloaded a source distribution, you can install it as follows:
 
 .. code-block:: bash
@@ -209,19 +209,19 @@ Fetch the code from the official ``hdlmake`` git repository, that can be found a
 Once you have a valid ``hdlmake`` source tree, you can install ``hdlmake`` into your Python site-packages directly via *setup.py install*:
 
 .. code-block:: bash
-   
+
    cd /path_to_hdlmake_sources/hdl-make
    python2.7 setup.py install
-   
+
 ``hdlmake`` is now installed into your active Python environment and can be run simply by executing ``hdlmake`` in your shell.
 
 As a developer, you may wish to avoid installing ``hdlmake`` directly into your site-packages, but can instead link directly to the sources instead:
 
 .. code-block:: bash
-   
+
    cd /path_to_hdlmake_sources/hdl-make
-   python2.7 setup.py develop
-   
+   pip install --user -e .
+
 Alternatively, you may choose to forgo installing anything in your Python environment and simply directly run from the source by creating a launch script.
 Create a launch script in /usr/bin or any other available location at shell $PATH. You can name the script as you prefer so, by doing this, multiple ``hdlmake`` versions can easily be used in the same machine. In any case, in this documentation we will consider that the name for this launch script is just ``hdlmake``.
 
@@ -230,7 +230,7 @@ Create a launch script in /usr/bin or any other available location at shell $PAT
    #!/usr/bin/env bash
    PYTHONPATH=/path_to_hdlmake_sources/hdl-make python2.7 -m hdlmake $@
 
-Once the launch script has been created, the appropriate execution rights must be set: 
+Once the launch script has been created, the appropriate execution rights must be set:
 
 .. code-block:: bash
 
@@ -246,7 +246,20 @@ In the above examples the following nomenclature is used:
 Windows specific guidelines
 ---------------------------
 
-From the new 3.0 version onwards, ``hdlmake`` supports execution on native ``Windows`` shell, including both the old ``cmd`` and the new ``PowerShell``. In this section, you'll find instructions on how to install and configure the tool and the required versions of the programs (``Git`` and ``Make``).
+As ``hdlmake`` uses ``Make``, the installation on Windows is slightly tricky.
+First you have to install ``Make``.  But there are two flavours of ``Make``:
+the native one (which uses ``cmd`` or ``PowerShell``) and the cygwin one (which
+uses ``bash``).
+
+The commands used are not the same.  For example to remove a file, ``del`` is
+used with the native flavour but ``rm`` is used for ``bash``.  The tool
+``hdlmake`` chooses the flavour according to the python executable.  So
+you have to use a matching pair of ``Python`` and ``Make``: either both
+native or both cygwin.
+
+In any case, you also need to install ``Git``.
+
+The instructions below are for the native flavour.
 
 Make
 ~~~~
@@ -680,7 +693,7 @@ Note that ``hdlmake`` and the examples included in the ``counter`` test have bee
 Handling remote modules
 -----------------------
 
-Let's take a simple example of how ``hdlmake`` handles repositories. 
+Let's take a simple example of how ``hdlmake`` handles repositories.
 
 First, consider that we have a project consisting on four HDL modules and one testbench. The project root folder looks like this:
 
@@ -693,6 +706,7 @@ First, consider that we have a project consisting on four HDL modules and one te
        |-- module2
        |-- module3
        |-- module4
+       |-- module5
        `-- tb
 
 Supposing that all of the modules are local to the development machine, i.e. the contents of the modules are available in the local host, the ``Manifest.py``  in ``tb`` directory should look like this:
@@ -700,12 +714,16 @@ Supposing that all of the modules are local to the development machine, i.e. the
 .. code-block:: python
 
    modules = {
-       "local":["../module1","../module2","../module3","../module4"]
+       "local":["../module1",
+                "../module2",
+                "../module3",
+                "../module4",
+                "../module5"]
    }
 
-We only have the ``local`` key and an asociated four elements list containing the path to the respective local folders where the modules are stored.
+We only have the ``local`` key and an asociated five elements list containing the path to the respective local folders where the modules are stored.
 
-This case was very trivial. Let's try now to complicate the situation a bit. Let say, ``module1`` is stored as a local module, ``module2`` and ``module3`` are stored in remote **SVN** repositories, and ``module4`` is stored in a **GIT** repository. Here we have how a sample module declaration including remote repositories would look like:
+This case was very trivial. Let's try now to complicate the situation a bit. Let say, ``module1`` is stored as a local module, ``module2`` and ``module3`` are stored in remote **SVN** repositories, ``module4`` is stored in a **GIT** repository, and ``module5`` is stored in a **GITSM** repository. Here we have how a sample module declaration including remote repositories would look like:
 
 .. code-block:: python
 
@@ -715,12 +733,13 @@ This case was very trivial. Let's try now to complicate the situation a bit. Let
            "http://path.to.repo/module2",
            "http://path.to.repo/module3@25"
        ],
-       "git":"git@github.com:user/module4.git"
+       "git": "git@github.com:user/module4.git",
+       "gitsm": "git@github.com:user/module5.git"
    }
 
 Now we can see that the ``local`` key just has an associated path (i.e. this is a 1-element list), while we have two additional key identifiers: ``svn``, pointing to a list of two remote SVN repositories, and ``git``, pointing to a single remote GIT repository.
 
-Regarding the SVN repositories, ``module2`` is pointing to the ``default/head`` revision while ``module3`` SVN repository is pointing to revision number 25 by appending the ``@25`` sufix to the repository URL..
+Regarding the SVN repositories, ``module2`` is pointing to the ``default/head`` revision while ``module3`` SVN repository is pointing to revision number 25 by appending the ``@25`` suffix to the repository URL..
 
 Finally, the Git repository ``module4`` is the only entry for the GIT module list and it is pointing to the ``default/master`` branch, but we can introduce the following extra modifiers to force a specific ``branch``, ``tag`` or ``commit``:
 
@@ -743,6 +762,8 @@ Finally, the Git repository ``module4`` is the only entry for the GIT module lis
        "git":"git@github.com:user/module4.git@@a964df3d84f84ef1f87acb300c4946d8c33e526a"
 
 .. note:: if the requested Git repository is declared as a ``git submodule`` too and we do not provide an extra ``::`` or ``@@``  modifier in the ``Manifest.py``, ``hdlmake`` will read the desired commit id from the respective submodule declaration and will checkout this code revision right after the repository is cloned.
+
+Finally, the GITSM is just a standard Git repository and operates in the same way. The only difference with a standard Git repository for ``hdlmake`` consists in that once a GITSM module has been cloned, a recursive ``git submodule init`` and ``git submodule update`` process will be launched for this repository.
 
 Now, if we run the ``hdlmake fetch`` command from inside the folder where the top Manifest.py is stored, hdlmake will read the local, SVN and GIT module lists and will automatically clone/fetch the remote SVN and GIT repositories. The only issue is that the modules would be fetched to the directory in which we are placed, which is not very elegant. To make the process more flexible, we can add the ``fetchto`` option to the manifest in order to point to the actual folder in which we want to store our remotely hosted modules.
 
@@ -861,30 +882,30 @@ commands into the Makefile.
 As a first option, multiple commands can be launched by spliting a single long string into one piece per command.
 The drawback for this approach is that the original single line is reconstructed an inserted into the Makefile, so
 the specific external command Makefile target include just a single entry. This is why, in the following example,
-semicolons are used in order to separate the sequential commands: 
+semicolons are used in order to separate the sequential commands:
 
 .. code-block:: python
 
    syn_pre_cmd = (
-       "mkdir /home/user/Workspace/test1;" 
-       "mkdir /home/user/Workspace/test2;" 
-       "mkdir /home/user/Workspace/test3;" 
-       "mkdir /home/user/Workspace/test4;" 
-       "mkdir /home/user/Workspace/test5" 
+       "mkdir /home/user/Workspace/test1;"
+       "mkdir /home/user/Workspace/test2;"
+       "mkdir /home/user/Workspace/test3;"
+       "mkdir /home/user/Workspace/test4;"
+       "mkdir /home/user/Workspace/test5"
    )
 
 A cleaner alternative, is using a multiline text in which line return and tabulation characters has been introduced
-in order to separate in different lines each of the commans when they are written into the Makefiles. In the 
+in order to separate in different lines each of the commans when they are written into the Makefiles. In the
 following example, this approach is exemplified:
 
 .. code-block:: python
 
    syn_pre_cmd = (
-       "mkdir /home/user/Workspace/test1\n\t\t" 
-       "mkdir /home/user/Workspace/test2\n\t\t" 
-       "mkdir /home/user/Workspace/test3\n\t\t" 
-       "mkdir /home/user/Workspace/test4\n\t\t" 
-       "mkdir /home/user/Workspace/test5" 
+       "mkdir /home/user/Workspace/test1\n\t\t"
+       "mkdir /home/user/Workspace/test2\n\t\t"
+       "mkdir /home/user/Workspace/test3\n\t\t"
+       "mkdir /home/user/Workspace/test4\n\t\t"
+       "mkdir /home/user/Workspace/test5"
    )
 
 
@@ -916,7 +937,7 @@ is used to select the content of the following ``modules`` to be scanned:
            "local" : [ "../../../modules/counter/verilog" ],
        }
 
-Now, in order to define the ``simulate_vhdl`` variable value, we can use two different approachs. 
+Now, in order to define the ``simulate_vhdl`` variable value, we can use two different approachs.
 The first one is to include this as a new variable in the top Manifest.py, i.e.:
 
 .. code-block:: python
@@ -931,12 +952,12 @@ The first one is to include this as a new variable in the top Manifest.py, i.e.:
        "local" : [ "../../../testbench/counter_tb/verilog" ],
    }
 
-But we can also define the variable value by injecting custom prefix or sufix Python code from the command line
+But we can also define the variable value by injecting custom prefix or suffix Python code from the command line
 when ``hdlmake`` is executed, e.g.:
 
 .. code-block:: bash
 
-   hdlmake --sufix "simulate_vhdl = False" makefile
+   hdlmake --suffix "simulate_vhdl = False" makefile
 
 
 
@@ -1109,6 +1130,8 @@ This project makes use of **custom Xilinx Vivado properties** and **custom Pytho
    modules = { "local" : [ "../../../../top/afc_v3/vivado/dbe_bpm2" ] };
 
 
+.. note:: If you are generating HDL code from a Xilinx IP library, you may need to select the target language by setting the ``language`` top manifest variable to either ``vhdl`` or ``verilog``. If the ``language`` variable is not defined, ``hdlmake`` will choose ``vhdl`` as the default HDL language.
+
 
 Intel Quartus
 ~~~~~~~~~~~~~
@@ -1192,6 +1215,115 @@ If you want to use a different Intel Quartus version, you will need to fix the I
     -- Retrieval info: 	<generic name="gui_split_sizes" value="" />
 
 
+If you want to regenerate the Quartus project by using your **custom Quartus properties**, you may replace the provided ``Manifest.py`` with the following one and edit it accordingly. Note that this will generate ``set_global_assignment`` statements in which the dictionary key ``name`` is the name of property and the key ``value`` its value. Other supported property keys are ``tag``, ``section_id``, ``to`` and ``from``. As an example, we force the VHDL and Verilog input version and optimize the synthesis for speed:
+
+.. code-block:: python
+
+   target = "altera"
+   action = "synthesis"
+
+   syn_family  = "Arria V"
+   syn_device  = "5agxmb1g4f"
+   syn_grade   = "c4"
+   syn_package = "40"
+   syn_top     = "vfchd_wr_ref_top"
+   syn_project = "vfchd_wr_ref"
+   syn_tool = "quartus"
+   syn_properties = [
+       {"name": "VHDL_INPUT_VERSION", "value": "VHDL_2008"},
+       {"name": "VERILOG_INPUT_VERSION", "value": "SYSTEMVERILOG_2005"},
+       {"name": "optimization_technique", "value": "speed"}
+   ]
+
+   quartus_preflow = "quartus_preflow.tcl"
+
+   files = [
+       "vfchd_wr_ref.sdc",
+       "quartus_preflow.tcl",
+   ]
+
+   modules = {
+       "local" : [
+           "../../top/vfchd_ref_design/",
+       ]
+   }
+
+
+
+Mentor Modelsim
+~~~~~~~~~~~~~~~
+
+In the same sources provided by CERN for the White Rabbit PTP core, there are several complex simulation examples for Mentor Modelsim. These examples cover different features of the WR core and use mixed VHDL, Verilog and SystemVerilog co-simulation (note that Xilinx Unisim libraries are required to be compiled for Modelsim and installed too):
+
+.. code-block:: bash
+
+   git clone git://ohwr.org/hdl-core-lib/wr-cores.git
+   cd wr-cores
+   git checkout wrpc-v4.0
+   git submodule init
+   git submodule update
+
+From the provided simulation examples, we will use the following one. This is a complete demo that simulates a WR PTP Core receiving and processing synchronous Gigabit Ethernet frames, from the PHY interface controller to the embedded 32-bits soft-processor:
+
+.. code-block:: bash
+
+   cd testbench/wrc_core
+
+In some version of Modelsim (e.g. ``Modelsim PE 10.5a``), we will need to fix the declaration of the initialized variables in System Verilog testbenches. As an example, we may apply the modifications highlighted in the following diff patch:
+
+.. code-block:: diff
+
+   diff --git a/testbench/wrc_core/functions.svh b/testbench/wrc_core/functions.svh
+   index 33abf71..8ad1c8e 100644
+   --- a/testbench/wrc_core/functions.svh
+   +++ b/testbench/wrc_core/functions.svh
+   @@ -48,14 +48,14 @@ semaphore  txPkt = new(1);
+     */
+    task send_frames(WBPacketSource src, int n_packets, int ifg = 0 /*[us]*/);
+    // TODO: improve the IFG: allow to make it tighter
+   -  int i, seed = 0,n1=0,n2=0;
+   -  int cur_size, dir;
+   +  static int seed = 0,n1=0,n2=0;
+   +  int i, cur_size, dir;
+      EthPacket pkt, tmpl;
+      EthPacket to_ext[$], to_minic[$];
+   -  EthPacketGenerator gen  = new;
+   +  static EthPacketGenerator gen  = new;
+      int random_ifg; //us
+   -  int min_ifg = 1; //us
+   -  int max_ifg = 100;//us
+   +  static int min_ifg = 1; //us
+   +  static int max_ifg = 100;//us
+
+      tmpl                = new;
+      tmpl.src                = '{'h22,'h33,'h44,'h44,'h55,'h66};
+
+
+Once everything is ready, we can compile the design sources. As the ``HDLMake`` SystemVerilog parser is not very accurate yet and it is not able to successfully solve the complete hierarchy, we will need to pass the ``-a`` flag to the makefile generation command so that all the files are parsed and passed to the compiler -- even if we cannot relate them to the top entity by using dependency relations:
+
+.. code-block:: bash
+
+   hdlmake -a makefile
+   make
+   vsim -modelsimini modelsim.ini -L unisim -do run.do -i main
+
+Alternatively, we may provide the full path to the Unisim library (required Xilinx sim components), e.g.:
+
+.. code-block:: bash
+
+   vsim -L c:\modeltech_pe_10.5a\xilinx_libs\unisim -do run.do -i main
+
+In this point, if everything goes OK, Modelsim window will open and we will see the waveform progress for the design under test:
+
+.. figure:: images/modelsim_wrc.*
+   :scale: 100
+   :align: center
+   :figclass: align-center
+
+
+.. note:: When working with Verilog and SystemVerilog included files in Modelsim and derivatives, you will need to use the ``include_dirs`` parameter in ``Manifest.py`` to specify the directories in which the files to be included can be stored. It's important to know that the ``+incdir+`` directives will automatically be stripped from ``vlog_opt`` by ``hdlmake``.
+
+
 hdlmake supported actions/commands
 ==================================
 
@@ -1220,7 +1352,7 @@ In order to allow for a more agile development, we have included these shortcuts
 
 
 Fetching submodules for a top module (``fetch``)
-------------------------------------------------               
+------------------------------------------------
 Fetch and/or update remote modules listed in Manifest. It is assumed that a projects can consist of modules, that are stored in different places (locally or a repo). The same thing is about each of those modules - they can be based on other modules. Hdlmake can fetch all of them and store them in specified places. For each module one can specify a target catalog with manifest variable ``fetchto``. Its value must be a name (existent or not) of a folder. The folder may be located anywhere in the filesystem. It must be then a relative path (``hdlmake`` support solely relative paths).
 
 Cleaning the fetched repositories (``clean``)
@@ -1254,7 +1386,7 @@ Summing everything up, the following table compiles the different kind of resour
 Now, here we have some examples of the outputs we should expect when using the ``list-mods`` command:
 
 .. code-block:: bash
-   
+
    user@host:~/hdl-make/tests/counter/syn/spec_v4_ise/vhdl$ hdlmake list-mods --with-files
    # MODULE START -> git@ohwr.org:misc/hdl-make.git
    # * This is the root module
@@ -1319,12 +1451,14 @@ Top Manifest variables
 
 +----------------+--------------+-----------------------------------------------------------------+-----------+
 | Name           | Type         | Description                                                     | Default   |
-+================+==============+=================================================================+===========+ 
-| action         | str          | What is the action that should be taken (simulation/synthesis)  | ""        | 
++================+==============+=================================================================+===========+
+| action         | str          | What is the action that should be taken (simulation/synthesis)  | ""        |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
-| incl_makefiles | list, str    | List of .mk files appended to toplevel makefile                 | []        |
+| incl_makefiles | list         | List of .mk files included in the generated makefile            | []        |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
- 
+| language       | str          | Select the default HDL language if required (verilog, vhdl)     | "vhdl"    |
++----------------+--------------+-----------------------------------------------------------------+-----------+
+
 
 Universal variables
 -------------------
@@ -1337,10 +1471,12 @@ Universal variables
 | modules        | dict         | List of local modules                                           | {}        |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
 | files          | str, list    | List of files from the current module                           | []        |
-+----------------+--------------+-----------------------------------------------------------------+-----------+ 
++----------------+--------------+-----------------------------------------------------------------+-----------+
 | library        | str          | Destination library for module's VHDL files                     | work      |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
 | include_dirs   | list, str    | Include dirs for Verilog sources                                | None      |
++----------------+--------------+-----------------------------------------------------------------+-----------+
+| extra_modules  | list         | Force the listed HDL entities to be included in the design      | None      |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
 
 
@@ -1365,17 +1501,19 @@ Basic simulation variables:
 
 Modelsim/VSim specific variables:
 
-+----------------+--------------+-----------------------------------------------------------------+-----------+
-| Name           | Type         | Description                                                     | Default   |
-+================+==============+=================================================================+===========+
-| vsim_opt       | str          | Additional options for vsim                                     | ""        |
-+----------------+--------------+-----------------------------------------------------------------+-----------+
-| vcom_opt       | str          | Additional options for vcom                                     | ""        |
-+----------------+--------------+-----------------------------------------------------------------+-----------+
-| vlog_opt       | str          | Additional options for vlog                                     | ""        |
-+----------------+--------------+-----------------------------------------------------------------+-----------+
-| vmap_opt       | str          | Additional options for vmap                                     | ""        |
-+----------------+--------------+-----------------------------------------------------------------+-----------+
++---------------------+--------------+-----------------------------------------------------------------+-----------+
+| Name                | Type         | Description                                                     | Default   |
++=====================+==============+=================================================================+===========+
+| vsim_opt            | str          | Additional options for vsim                                     | ""        |
++---------------------+--------------+-----------------------------------------------------------------+-----------+
+| vcom_opt            | str          | Additional options for vcom                                     | ""        |
++---------------------+--------------+-----------------------------------------------------------------+-----------+
+| vlog_opt            | str          | Additional options for vlog                                     | ""        |
++---------------------+--------------+-----------------------------------------------------------------+-----------+
+| vmap_opt            | str          | Additional options for vmap                                     | ""        |
++---------------------+--------------+-----------------------------------------------------------------+-----------+
+| modelsim_ini_path   | str          | Directory containing a custom modelsim.ini file                 | None      |
++---------------------+--------------+-----------------------------------------------------------------+-----------+
 
 
 Icarus Verilog specific variables:
@@ -1384,6 +1522,15 @@ Icarus Verilog specific variables:
 | Name           | Type         | Description                                                     | Default   |
 +================+==============+=================================================================+===========+
 | iverilog_opt   | str          | Additional options for iverilog                                 | ""        |
++----------------+--------------+-----------------------------------------------------------------+-----------+
+
+
+GHDL specific variables:
+
++----------------+--------------+-----------------------------------------------------------------+-----------+
+| Name           | Type         | Description                                                     | Default   |
++================+==============+=================================================================+===========+
+| ghdl_opt       | str          | Additional options for ghdl                                     | ""        |
 +----------------+--------------+-----------------------------------------------------------------+-----------+
 
 
@@ -1464,6 +1611,11 @@ Shows help message that is automatically generated with Python's optparse module
 Print the version of the ``hdlmake`` instance on execution an quit.
 
 
+``-a, --all``
+--------------
+Disable the stage in which ``hdlmake`` purges the files that are considered as not dependent on the top entity. In this way, by activating this flag all of the files listed by the module hierarchy will be used for the issued action.
+
+
 ``--log LOG``
 -------------
 Set logging level for the Python logger facility. You can choose one of the levels in the following tables, in which the the associated internal logging numeric value is also included:
@@ -1484,6 +1636,15 @@ Set logging level for the Python logger facility. You can choose one of the leve
 | not provided  | 0             |
 +---------------+---------------+
 
+``--logfile LOGFILE``
+---------------------
+Use a file to store all of the log information generated by ``hdlmake``. For example, if we want to list the files contained by a design while storing the log in ``/var/log/hdlmake.log``, we should run the following command:
+
+.. code-block:: bash
+
+   hdlmake --logfile /var/log/hdlmake.log list-files
+
+
 
 ``-p, --prefix ARBITRARY_CODE``
 -------------------------------
@@ -1493,16 +1654,15 @@ As an example, this command will generate the Makefile and will try to print ``H
 
 .. code-block:: bash
 
-   hdlmake -p "print('Hello hdlmake')"
+   hdlmake -p "print('Hello hdlmake')" makefile
 
 
-``-s, --sufix ARBITRARY_CODE``
-------------------------------
+``-s, --suffix ARBITRARY_CODE``
+-------------------------------
 Add arbitrary Python code from the command line that **will be evaluated after each Manifest.py** parse action across the hierarchy.
 
 As an example, this command will generate the Makefile but will try to print ``Bye, bye hdlmake`` after each ``Manifest.py`` run:
 
 .. code-block:: bash
 
-   hdlmake -s "print('Bye, bye hdlmake')"
-
+   hdlmake -s "print('Bye, bye hdlmake')" makefile

@@ -26,11 +26,11 @@
 from __future__ import absolute_import
 import string
 
-from .make_sim import ToolSim
-from hdlmake.srcfile import VerilogFile, VHDLFile, SVFile
+from .makefilesim import MakefileSim
+from ..sourcefiles.srcfile import VerilogFile, VHDLFile, SVFile
 
 
-class ToolIVerilog(ToolSim):
+class ToolIVerilog(MakefileSim):
 
     """Class providing the interface for Icarus Verilog simulator"""
 
@@ -56,16 +56,11 @@ class ToolIVerilog(ToolSim):
 
     def __init__(self):
         super(ToolIVerilog, self).__init__()
-        self._tool_info.update(ToolIVerilog.TOOL_INFO)
-        self._hdl_files.update(ToolIVerilog.HDL_FILES)
-        self._standard_libs.extend(ToolIVerilog.STANDARD_LIBS)
-        self._clean_targets.update(ToolIVerilog.CLEAN_TARGETS)
-        self._simulator_controls.update(ToolIVerilog.SIMULATOR_CONTROLS)
 
     def _makefile_sim_compilation(self):
         """Generate compile simulation Makefile target for IVerilog"""
         self.writeln("simulation: include_dirs $(VERILOG_OBJ) $(VHDL_OBJ)")
-        self.writeln("\t\t" + self._simulator_controls['compiler'])
+        self.writeln("\t\t" + self.SIMULATOR_CONTROLS['compiler'])
         self.writeln()
         self.writeln("include_dirs:")
         self.writeln("\t\techo \"# IVerilog command file,"

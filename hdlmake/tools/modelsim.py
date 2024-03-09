@@ -27,10 +27,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 import os
 
-from .sim_makefile_support import VsimMakefileWriter
+from .makefilevsim import MakefileVsim
 
 
-class ToolModelsim(VsimMakefileWriter):
+class ToolModelsim(MakefileVsim):
 
     """Class providing the interface for Mentor Modelsim simulator"""
 
@@ -49,18 +49,17 @@ class ToolModelsim(VsimMakefileWriter):
         self.copy_rules["modelsim.ini"] = os.path.join(
             "$(MODELSIM_INI_PATH)", "modelsim.ini")
         self.additional_deps.append("modelsim.ini")
-        self._tool_info.update(ToolModelsim.TOOL_INFO)
-        self._clean_targets.update(ToolModelsim.CLEAN_TARGETS)
-        self._standard_libs.extend(ToolModelsim.STANDARD_LIBS)
 
     def _makefile_sim_options(self):
         """Print the Modelsim options to the Makefile"""
-        if "sim_path" in self.manifest_dict:
-            modelsim_ini_path = os.path.join(
-                self.manifest_dict["sim_path"],
-                "..")
-        else:
-            modelsim_ini_path = os.path.join("$(HDLMAKE_MODELSIM_PATH)", "..")
+        modelsim_ini_path = self.manifest_dict.get("modelsim_ini_path")
+        if modelsim_ini_path == None:
+            if self.manifest_dict['sim_path']:
+                modelsim_ini_path = os.path.join(
+                    self.manifest_dict["sim_path"], "..")
+            else:
+                modelsim_ini_path = os.path.join(
+                    "$(HDLMAKE_MODELSIM_PATH)", "..")
         self.custom_variables["MODELSIM_INI_PATH"] = modelsim_ini_path
         modelsim_ini = "-modelsimini modelsim.ini "
         vcom_opt = self.manifest_dict.get("vcom_opt", '')

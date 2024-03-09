@@ -25,11 +25,11 @@
 
 from __future__ import absolute_import
 
-from .make_syn import ToolSyn
-from hdlmake.srcfile import VerilogFile, PCFFile
+from .makefilesyn import MakefileSyn
+from ..sourcefiles.srcfile import VerilogFile, PCFFile
 
 
-class ToolIcestorm(ToolSyn):
+class ToolIcestorm(MakefileSyn):
 
     """Class providing the interface for IceStorm synthesis"""
 
@@ -64,11 +64,6 @@ class ToolIcestorm(ToolSyn):
 
     def __init__(self):
         super(ToolIcestorm, self).__init__()
-        self._tool_info.update(ToolIcestorm.TOOL_INFO)
-        self._hdl_files.update(ToolIcestorm.HDL_FILES)
-        self._supported_files.update(ToolIcestorm.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolIcestorm.STANDARD_LIBS)
-        self._clean_targets.update(ToolIcestorm.CLEAN_TARGETS)
         self._tcl_controls.update(ToolIcestorm.TCL_CONTROLS)
 
     def _makefile_syn_top(self):

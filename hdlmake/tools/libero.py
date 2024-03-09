@@ -25,11 +25,11 @@
 
 
 from __future__ import absolute_import
-from .make_syn import ToolSyn
-from hdlmake.srcfile import VHDLFile, VerilogFile, SDCFile, PDCFile
+from .makefilesyn import MakefileSyn
+from ..sourcefiles.srcfile import VHDLFile, VerilogFile, SDCFile, PDCFile
 
 
-class ToolLibero(ToolSyn):
+class ToolLibero(MakefileSyn):
 
     """Class providing the interface for Microsemi Libero IDE synthesis"""
 
@@ -42,7 +42,7 @@ class ToolLibero(ToolSyn):
 
     STANDARD_LIBS = ['ieee', 'std']
 
-    _LIBERO_SOURCE = 'create_links {0} {{$$filename}}'
+    _LIBERO_SOURCE = 'create_links {0} $(sourcefile)'
 
     SUPPORTED_FILES = {
         SDCFile: _LIBERO_SOURCE.format('-sdc'),
@@ -63,7 +63,7 @@ class ToolLibero(ToolSyn):
         'save': 'save_project',
         'close': 'close_project',
         'project': '$(TCL_CREATE)\n'
-                   '$(TCL_FILES)\n'
+                   'source files.tcl\n'
                    '{0}\n'
                    '$(TCL_SAVE)\n'
                    '$(TCL_CLOSE)',
@@ -76,11 +76,6 @@ class ToolLibero(ToolSyn):
 
     def __init__(self):
         super(ToolLibero, self).__init__()
-        self._tool_info.update(ToolLibero.TOOL_INFO)
-        self._hdl_files.update(ToolLibero.HDL_FILES)
-        self._supported_files.update(ToolLibero.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolLibero.STANDARD_LIBS)
-        self._clean_targets.update(ToolLibero.CLEAN_TARGETS)
         self._tcl_controls.update(ToolLibero.TCL_CONTROLS)
 
     def _makefile_syn_tcl(self):
@@ -99,14 +94,12 @@ class ToolLibero(ToolSyn):
         compilation_constraints = []
         ret = []
         # First stage: linking files
-        for file_aux in self.fileset:
+        for file_aux in self.fileset.sort():
             if isinstance(file_aux, SDCFile):
                 synthesis_constraints.append(file_aux)
                 compilation_constraints.append(file_aux)
             elif isinstance(file_aux, PDCFile):
                 compilation_constraints.append(file_aux)
-            else:
-                continue
         # Second stage: Organizing / activating synthesis constraints (the top
         # module needs to be present!)
         if synthesis_constraints:

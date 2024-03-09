@@ -26,7 +26,7 @@ from __future__ import absolute_import
 import logging
 import os
 import sys
-if not sys.version[0] is "2":
+if sys.version[0] != "2":
     from io import StringIO
 else:
     from StringIO import StringIO
@@ -34,14 +34,12 @@ import contextlib
 
 
 @contextlib.contextmanager
-def stdout_io(stdout=None):
+def capture_stdout():
     """This is a function used to grab the stdout from
     the executed Manifest.py files"""
     old = sys.stdout
-    if stdout is None:
-        stdout = StringIO()
-    sys.stdout = stdout
-    yield stdout
+    sys.stdout = StringIO()
+    yield sys.stdout
     sys.stdout = old
 
 
@@ -156,8 +154,7 @@ types:[<type 'int'>]
             self.keys = []
             self.types = []
             self.help = ""
-            self.arbitrary_code = ""
-            self.global_code = ""
+            self.default = None
 
             for key in others:
                 if key == "help":
@@ -178,13 +175,9 @@ types:[<type 'int'>]
             the option's value is a dict!!"""
             if not isinstance(key, str):
                 raise ValueError("Allowed key must be a string")
-            try:
-                self.keys.append(key)
-            except AttributeError:
-                if type(dict()) not in self.types:
-                    raise RuntimeError(
-                        "Allowing a key makes sense for dictionaries only")
-                self.keys = [key]
+            if dict not in self.types:
+                raise RuntimeError(
+                    "Allowing a key makes sense for dictionaries only, {}".format(self.types))
             self.keys.append(key)
 
     def __init__(self, description=None):
@@ -194,16 +187,8 @@ types:[<type 'int'>]
         self.description = description
         self.options = []
         self.prefix_code = ""
-        self.sufix_code = ""
+        self.suffix_code = ""
         self.config_file = None
-
-    def __setitem__(self, name, value):
-        if name in self.__names():
-            for option_x in self.options:
-                if option_x.name == name:
-                    option_x = value
-        else:
-            self.options.append(value)
 
     def __getitem__(self, name):
         if name in self.__names():
@@ -219,21 +204,8 @@ types:[<type 'int'>]
             if opt is None:
                 print("")
                 continue
-
-            line = '  {0:15}; {1:29}; {2:45}{3}{4:10}'
-            try:
-                tmp_def = opt.default
-                if tmp_def == "":
-                    tmp_def = '""'
-                line = line.format(
-                    opt.name,
-                    str(opt.types),
-                    opt.help,
-                    ', default=',
-                    tmp_def)
-            except AttributeError:  # no default value
-                line = line.format(opt.name, str(opt.types), opt.help, "", "")
-            print(line)
+            print('  {0:15}; {1:29}; {2:45}, default={3:10}'.format(
+                opt.name, str(opt.types), opt.help, opt.default or '""'))
 
     def add_option(self, name, **others):
         """Add a new Option object and add it to the parser's option list"""
@@ -254,35 +226,15 @@ types:[<type 'int'>]
     def add_allowed_key(self, name, key):
         """Grab the specified option from parser's list and add a new dict key.
         Note that this is only allowed when the option's value is a dict!!"""
-        if not isinstance(key, str):
-            raise ValueError("Allowed key must be a string")
-        try:
-            self[name].allowed_keys.append(key)
-        except AttributeError:
-            if type(dict()) not in self[name].types:
-                raise RuntimeError(
-                    "Allowing a key makes sense for dictionaries only")
-            self[name].allowed_keys = [key]
-        self[name].allowed_keys.append(key)
-
         self[name].add_key(key)
-
-    def add_config_file(self, config_file):
-        """Add the Manifest to be processed by the parser"""
-        if self.config_file is not None:
-            raise RuntimeError("Config file should be added only once")
-        if not os.path.exists(config_file):
-            raise RuntimeError("Config file doesn't exists: " + config_file)
-        self.config_file = config_file
-        return
 
     def add_prefix_code(self, code):
         """Add the arbitrary Python to be executed just before the Manifest"""
         self.prefix_code += code + '\n'
 
-    def add_sufix_code(self, code):
+    def add_suffix_code(self, code):
         """Add the arbitrary Python to be executed just after the Manifest"""
-        self.prefix_code += code + '\n'
+        self.suffix_code += code + '\n'
 
     def __names(self):
         """A method that returns a list containing the name for every non
@@ -290,10 +242,10 @@ types:[<type 'int'>]
         return [o.name for o in self.options if o is not None]
 
     def __parser_runner(self, content, extra_context):
-        """method that acts as an 'exec' wraper to run the Python code"""
+        """method that acts as an 'exec' wraper to run the Python code.  Return the locals"""
         options = {}
         try:
-            with stdout_io() as stdout_aux:
+            with capture_stdout() as stdout_aux:
                 root_path = os.getcwd()
                 exec_path = os.path.dirname(self.config_file)
                 os.chdir(exec_path)
@@ -302,24 +254,19 @@ types:[<type 'int'>]
             printed = stdout_aux.getvalue()
             if len(printed) > 0:
                 logging.info(
-                    "The manifest inside " +
-                    self.config_file +
-                    " tried to print something:")
+                    "The manifest inside {} tried to print something:".format(
+                        self.config_file))
                 for line in printed.split('\n'):
                     print("> " + line)
         except SyntaxError as error_syntax:
-            logging.error("Invalid syntax in the manifest file " +
-                          self.config_file + ":\n" + str(error_syntax))
-            logging.error(content)
-            quit()
+            raise Exception("Invalid syntax in the manifest file {}:\n {}{}".format(
+                            self.config_file, str(error_syntax), content))
         except SystemExit as error_exit:
-            logging.error("Exit requested by the manifest file " +
-                          self.config_file + ":\n" + str(error_exit))
-            logging.error(content)
-            quit()
+            raise Exception("Exit requested by the manifest file {}:\n{}{}".format(
+                            self.config_file, str(error_exit), content))
         except:
-            logging.error("Encountered unexpected error while parsing " +
-                          self.config_file)
+            logging.error("Encountered unexpected error while parsing {}".format(
+                          self.config_file))
             logging.error(content)
             print(str(sys.exc_info()[0]) + ':' + str(sys.exc_info()[1]))
             raise
@@ -328,17 +275,15 @@ types:[<type 'int'>]
     def __read_config_content(self):
         """Load the Manifest.py file content in a local variable and return
         the obtained value as a string"""
-        if self.config_file is not None:
-            with open(self.config_file, "r") as config_file:
-                content = config_file.readlines()
-                content = ''.join(content)
-        else:
-            content = ''
-        return content
+        assert self.config_file is not None
+        return open(self.config_file, "r").read()
 
-    def parse(self, extra_context=None):
-        """Parse the stored manifest plus arbitrary code"""
+    def parse(self, config_file, extra_context=None):
+        """Parse the stored manifest plus arbitrary code.  Return a dictionnary
+        of variables defined in the manifest."""
         assert isinstance(extra_context, dict) or extra_context is None
+
+        self.config_file = config_file
 
         # These HDLMake keys must not be inherited from parent module
         key_purge_list = ["modules", "files", "include_dirs",
@@ -350,9 +295,9 @@ types:[<type 'int'>]
         # Now, grab the options coming from Manifest.py plus arbitrary_code:
         # - extra_context as global variables.
         # - options as local variables.
-        content = self.prefix_code + '\n' + content + '\n' + self.sufix_code
+        content = self.prefix_code + '\n' + content + '\n' + self.suffix_code
         options = self.__parser_runner(content, extra_context)
-        # Checkheck the options that were defined in the local context
+        # Check the options that were defined in the local context
         ret = {}
         for opt_name, val in list(options.items()):
             # Manifest variables starting with __(name) will be ignored,
@@ -373,19 +318,17 @@ types:[<type 'int'>]
             opt = self[opt_name]
             if type(val) not in opt.types:
                 raise RuntimeError(
-                    "Given option (%s) doesn't match specified types: (%s)" %
-                    (str(type(val)), str(opt.types)))
+                    "Given option '%s' is of type %s: '%s', it doesn't match allowed types: (%s), file %s" %
+                    (opt_name, str(type(val)), val, str(opt.types), self.config_file))
             ret[opt_name] = val
-            # Thi is only for the options of the dictionary class:
-            if isinstance(val, type(dict())):
-                try:
-                    for key in val:
-                        if key not in self[opt_name].allowed_keys:
-                            raise RuntimeError("Encountered unallowed key: "
-                                               "%s for option '%s'" %
-                                               (key, opt_name))
-                except AttributeError:  # no allowed_keys member - don't check
-                    pass
+            # This is only for the options of the dictionary class:
+            if isinstance(val, dict):
+                for key in val:
+                    if key not in self[opt_name].keys:
+                        raise RuntimeError(
+                            "Unallowed key: '{}' for option '{}'".format(
+                                key, opt_name))
+
         # Set the default values for those values that were not produced
         # by the Python exec operation.
         #for opt in self.options:
@@ -395,12 +338,3 @@ types:[<type 'int'>]
         #    except AttributeError:  # no default value in the option
         #        pass
         return ret
-
-
-def _test():
-    """This funtion provides an embedded test for the Manifest parser"""
-    import doctest
-    doctest.testmod()
-
-if __name__ == "__main__":
-    _test()

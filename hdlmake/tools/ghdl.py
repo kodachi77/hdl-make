@@ -26,18 +26,18 @@
 from __future__ import absolute_import
 import string
 
-from .make_sim import ToolSim
-from hdlmake.srcfile import VHDLFile
+from .makefilesim import MakefileSim
+from ..sourcefiles.srcfile import VHDLFile
 
 
-class ToolGHDL(ToolSim):
+class ToolGHDL(MakefileSim):
 
     """Class providing the interface for GHDL simulator"""
 
     TOOL_INFO = {
         'name': 'GHDL',
         'id': 'ghdl',
-        'windows_bin': None,
+        'windows_bin': 'ghdl',
         'linux_bin': 'ghdl'}
 
     STANDARD_LIBS = ['ieee', 'std']
@@ -48,28 +48,21 @@ class ToolGHDL(ToolSim):
                      'mrproper': ["*.vcd"]}
 
     SIMULATOR_CONTROLS = {'vlog': None,
-                          'vhdl': 'ghdl -a $<',
-                          'compiler': 'ghdl -e $(TOP_MODULE)'}
+                          'vhdl': '$(GHDL) -a --work={work} $(GHDL_OPT) $<',
+                          'compiler': '$(GHDL) -e $(GHDL_OPT) $(TOP_MODULE)'}
 
     def __init__(self):
         super(ToolGHDL, self).__init__()
-        self._tool_info.update(ToolGHDL.TOOL_INFO)
-        self._hdl_files.update(ToolGHDL.HDL_FILES)
-        self._standard_libs.extend(ToolGHDL.STANDARD_LIBS)
-        self._clean_targets.update(ToolGHDL.CLEAN_TARGETS)
-        self._simulator_controls.update(ToolGHDL.SIMULATOR_CONTROLS)
 
     def _makefile_sim_options(self):
         """Print the GHDL options to the Makefile"""
+        self.writeln("GHDL := ghdl")
         ghdl_opt = self.manifest_dict.get("ghdl_opt", '')
-        ghdl_string = string.Template(
-            """GHDL_OPT := ${ghdl_opt}\n""")
-        self.writeln(ghdl_string.substitute(
-            ghdl_opt=ghdl_opt))
+        self.writeln("GHDL_OPT := {ghdl_opt}\n".format(ghdl_opt=ghdl_opt))
 
     def _makefile_sim_compilation(self):
         """Print the GDHL simulation compilation target"""
         self.writeln("simulation: $(VERILOG_OBJ) $(VHDL_OBJ)")
-        self.writeln("\t\t" + self._simulator_controls['compiler'])
+        self.writeln("\t\t" + self.SIMULATOR_CONTROLS['compiler'])
         self.writeln('\n')
         self._makefile_sim_dep_files()

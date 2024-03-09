@@ -27,11 +27,11 @@ from __future__ import print_function
 from __future__ import absolute_import
 import logging
 
-from .make_syn import ToolSyn
+from .makefilesyn import MakefileSyn
 
-from hdlmake.util import shell
-from hdlmake.srcfile import (VHDLFile, VerilogFile, SVFile,
-                             UCFFile, CDCFile, NGCFile)
+from ..util import shell
+from ..sourcefiles.srcfile import (VHDLFile, VerilogFile, SVFile,
+                                   UCFFile, CDCFile, NGCFile, BMMFile, XCOFile)
 
 FAMILY_NAMES = {
     "XC6S": "Spartan6",
@@ -48,7 +48,7 @@ ISE_STANDARD_LIBS = ['ieee', 'ieee_proposed', 'iSE', 'simprims', 'std',
                      'synopsys', 'unimacro', 'unisim', 'XilinxCoreLib']
 
 
-class ToolISE(ToolSyn):
+class ToolISE(MakefileSyn):
 
     """Class providing the methods to create and build a Xilinx ISE project"""
 
@@ -65,7 +65,9 @@ class ToolISE(ToolSyn):
     SUPPORTED_FILES = {
         UCFFile: 'xfile add $(sourcefile)',
         CDCFile: 'xfile add $(sourcefile)',
-        NGCFile: 'xfile add $(sourcefile)'}
+        BMMFile: 'xfile add $(sourcefile)',
+        NGCFile: 'xfile add $(sourcefile)',
+        XCOFile: 'xfile add $(sourcefile)'}
 
     HDL_FILES = {
         VHDLFile: 'xfile add $(sourcefile)',
@@ -106,6 +108,7 @@ $(TCL_CLOSE)'''
         'save': 'project save',
         'close': 'project close',
         'project': '$(TCL_CREATE)\n'
+                   'xfile remove [search \\* -type file]\n'
                    'source files.tcl\n'
                    '{0}\n'
                    'project set top $(TOP_MODULE)\n'
@@ -115,18 +118,13 @@ $(TCL_CLOSE)'''
         'translate': _ISE_RUN.format("Translate"),
         'map': _ISE_RUN.format("Map"),
         'par': _ISE_RUN.format("Place "
-            + ("^&" if shell.check_windows() else "'&'")
+            + ("^&" if shell.check_windows_tools() else "'&'")
             + " Route"),
         'bitstream': _ISE_RUN.format("Generate Programming File"),
         'install_source': "*.bit *.bin"}
 
     def __init__(self):
         super(ToolISE, self).__init__()
-        self._tool_info.update(ToolISE.TOOL_INFO)
-        self._hdl_files.update(ToolISE.HDL_FILES)
-        self._supported_files.update(ToolISE.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolISE.STANDARD_LIBS)
-        self._clean_targets.update(ToolISE.CLEAN_TARGETS)
         self._tcl_controls.update(ToolISE.TCL_CONTROLS)
 
     def _makefile_syn_top(self):
@@ -136,10 +134,9 @@ $(TCL_CLOSE)'''
             syn_family = FAMILY_NAMES.get(
                 self.manifest_dict["syn_device"][0:4].upper())
             if syn_family is None:
-                logging.error(
+                raise Exception(
                     "syn_family is not defined in Manifest.py"
                     " and can not be guessed!")
-                quit(-1)
         self.manifest_dict["syn_family"] = syn_family
         super(ToolISE, self)._makefile_syn_top()
 
@@ -149,7 +146,7 @@ $(TCL_CLOSE)'''
         syn_properties = self.manifest_dict.get("syn_properties")
         project_new = []
         project_tcl = self._tcl_controls["project"]
-        if shell.check_windows():
+        if shell.check_windows_commands():
             tmp = 'project set "{0}" "{1}"'
         else:
             tmp = 'project set \\"{0}\\" \\"{1}\\"'

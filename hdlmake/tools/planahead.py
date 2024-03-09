@@ -25,7 +25,7 @@
 
 from __future__ import absolute_import
 from .xilinx import ToolXilinx
-from hdlmake.srcfile import (UCFFile, NGCFile, XMPFile, XCOFile)
+from ..sourcefiles.srcfile import (UCFFile, NGCFile, XMPFile, XCOFile, BMMFile)
 
 
 class ToolPlanAhead(ToolXilinx):
@@ -46,11 +46,13 @@ class ToolPlanAhead(ToolXilinx):
         UCFFile: ToolXilinx._XILINX_SOURCE,
         NGCFile: ToolXilinx._XILINX_SOURCE,
         XMPFile: ToolXilinx._XILINX_SOURCE,
+        BMMFile: ToolXilinx._XILINX_SOURCE,
         XCOFile: ToolXilinx._XILINX_SOURCE}
 
     CLEAN_TARGETS = {'clean': ["planAhead_*", "planAhead.*",
                                ".Xil", "$(PROJECT).cache", "$(PROJECT).data",
                                " $(PROJECT).runs", "$(PROJECT).ppr"]}
+    CLEAN_TARGETS.update(ToolXilinx.CLEAN_TARGETS)
 
     TCL_CONTROLS = {'bitstream': '$(TCL_OPEN)\n'
                                  'launch_runs impl_1 -to_step Bitgen\n'
@@ -59,8 +61,4 @@ class ToolPlanAhead(ToolXilinx):
 
     def __init__(self):
         super(ToolPlanAhead, self).__init__()
-        self._tool_info.update(ToolPlanAhead.TOOL_INFO)
-        self._supported_files.update(ToolPlanAhead.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolPlanAhead.STANDARD_LIBS)
-        self._clean_targets.update(ToolPlanAhead.CLEAN_TARGETS)
         self._tcl_controls.update(ToolPlanAhead.TCL_CONTROLS)

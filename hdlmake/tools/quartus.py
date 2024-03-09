@@ -28,15 +28,15 @@ import os
 import sys
 import logging
 
-from .make_syn import ToolSyn
-from hdlmake.util import path as path_mod
-from hdlmake.util import shell
-from hdlmake.srcfile import (VHDLFile, VerilogFile, SVFile, DPFFile,
-                             SignalTapFile, SDCFile, QIPFile, QSYSFile,
-                             QSFFile, BSFFile, BDFFile, TDFFile, GDFFile)
+from .makefilesyn import MakefileSyn
+from ..util import path as path_mod
+from ..util import shell
+from ..sourcefiles.srcfile import (VHDLFile, VerilogFile, SVFile, DPFFile,
+                                   SignalTapFile, SDCFile, QIPFile, QSYSFile,
+                                   QSFFile, BSFFile, BDFFile, TDFFile, GDFFile)
 
 
-class ToolQuartus(ToolSyn):
+class ToolQuartus(MakefileSyn):
 
     """Class providing the interface for Altera Quartus synthesis"""
 
@@ -68,9 +68,9 @@ class ToolQuartus(ToolSyn):
     HDL_FILES = {
         VHDLFile: _QUARTUS_SOURCE.format('VHDL_FILE') +
                   _QUARTUS_LIBRARY,
-        VerilogFile: _QUARTUS_SOURCE.format('SYSTEMVERILOG_FILE') +
+        VerilogFile: _QUARTUS_SOURCE.format('VERILOG_FILE') +
                      _QUARTUS_LIBRARY,
-        SVFile: _QUARTUS_SOURCE.format('VERILOG_FILE') +
+        SVFile: _QUARTUS_SOURCE.format('SYSTEMVERILOG_FILE') +
                  _QUARTUS_LIBRARY}
 
     CLEAN_TARGETS = {'clean': ["*.rpt", "*.smsg", "*.summary",
@@ -84,6 +84,7 @@ class ToolQuartus(ToolSyn):
                     'open': 'project_open $(PROJECT)',
                     'project': 'load_package flow\n'
                                '$(TCL_CREATE)\n'
+                               'remove_all_global_assignments -name *_FILE\n'
                                'source files.tcl',
                     'bitstream': 'load_package flow\n'
                                  '$(TCL_OPEN)\n'
@@ -102,11 +103,6 @@ class ToolQuartus(ToolSyn):
 
     def __init__(self):
         super(ToolQuartus, self).__init__()
-        self._tool_info.update(ToolQuartus.TOOL_INFO)
-        self._hdl_files.update(ToolQuartus.HDL_FILES)
-        self._supported_files.update(ToolQuartus.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolQuartus.STANDARD_LIBS)
-        self._clean_targets.update(ToolQuartus.CLEAN_TARGETS)
         self._tcl_controls.update(ToolQuartus.TCL_CONTROLS)
 
     def _makefile_syn_top(self):
@@ -118,7 +114,10 @@ class ToolQuartus(ToolSyn):
             try to guess the value from the device string if not defined"""
             family_names = {
                 "^EP2AGX.*$": "Arria II GX",
+                "^EP1C.*$": "Cyclone",
+                "^EP2C.*$": "Cyclone II",
                 "^EP3C.*$": "Cyclone III",
+                "^EP4C.*$": "Cyclone IV",
                 "^EP4CE.*$": "Cyclone IV E",
                 "^EP4CGX.*$": "Cyclone IV GX",
                 "^5A.*$": "Arria V",
@@ -131,9 +130,8 @@ class ToolQuartus(ToolSyn):
                             "Auto-guessed syn_family to be %s (%s => %s)",
                             family, device, key)
             if family is None:
-                logging.error("Could not auto-guess device family, please "
-                              "specify in Manifest.py using syn_family!")
-                sys.exit("\nExiting")
+                raise Exception("Could not auto-guess device family, please "
+                                "specify in Manifest.py using syn_family!")
             return family
 
         family_string = __get_family_string(
@@ -151,11 +149,11 @@ class ToolQuartus(ToolSyn):
         property_dict = {
             'what': None,
             'name': None,
-            'name_type': None,
-            'from_': None,
-            'to_': None,
+            'type': None,
+            'from': None,
+            'to': None,
             'section_id': None,
-            'tag_': None}
+            'tag': None}
         property_dict.update(new_property)
         words = []
         words.append(dict([(b, a) for a, b in
@@ -164,17 +162,17 @@ class ToolQuartus(ToolSyn):
             words.append(property_dict['what'])
         if property_dict['name'] is not None:
             words.append("-name")
-            words.append(property_dict['name_type'])
             words.append(property_dict['name'])
-        if property_dict['from_'] is not None:
+            words.append('\\"%s\\"' % property_dict['value'])
+        if property_dict['from'] is not None:
             words.append("-from")
-            words.append(property_dict['from_'])
-        if property_dict['tag_'] is not None:
+            words.append(property_dict['from'])
+        if property_dict['tag'] is not None:
             words.append("-tag")
-            words.append(property_dict['to_'])
-        if property_dict['to_'] is not None:
+            words.append(property_dict['tag'])
+        if property_dict['to'] is not None:
             words.append("-to")
-            words.append(property_dict['to_'])
+            words.append(property_dict['to'])
         if property_dict['section_id'] is not None:
             words.append("-section_id")
             words.append(property_dict['section_id'])
@@ -186,16 +184,26 @@ class ToolQuartus(ToolSyn):
         command_list.append(self._tcl_controls["project"])
         command_list.append(self._emit_property(
             self.SET_GLOBAL_ASSIGNMENT,
-            {'name_type': 'FAMILY',
-            'name': '\\"$(SYN_FAMILY)\\"'}))
+            {'name': 'FAMILY',
+            'value': '$(SYN_FAMILY)'}))
         command_list.append(self._emit_property(
             self.SET_GLOBAL_ASSIGNMENT,
-            {'name_type': 'DEVICE',
-            'name':'\\"$(SYN_DEVICE)\\"'}))
+            {'name': 'DEVICE',
+            'value':'$(SYN_DEVICE)'}))
         command_list.append(self._emit_property(
             self.SET_GLOBAL_ASSIGNMENT,
-            {'name_type': 'TOP_LEVEL_ENTITY',
-            'name': '\\"$(TOP_MODULE)\\"'}))
+            {'name': 'TOP_LEVEL_ENTITY',
+            'value': '$(TOP_MODULE)'}))
+        for user_property in self.manifest_dict.get("syn_properties", []):
+            if not isinstance(user_property, dict):
+                raise Exception("Quartus property should be defined as dict: "
+                                + str(user_property))
+            command_list.append(self._emit_property(self.SET_GLOBAL_ASSIGNMENT,
+                                user_property))
+        for inc in self.manifest_dict.get("include_dirs", []):
+            command_list.append(self._emit_property(self.SET_GLOBAL_ASSIGNMENT,
+                                {'name': 'SEARCH_PATH',
+                                'value': inc}))
         self._tcl_controls["project"] = '\n'.join(command_list)
         super(ToolQuartus, self)._makefile_syn_tcl()
 
@@ -204,40 +212,36 @@ class ToolQuartus(ToolSyn):
         command_list = []
         if "quartus_preflow" in self.manifest_dict:
             path = shell.tclpath(path_mod.compose(
-                self.manifest_dict["quartus_preflow"], os.getcwd()))
+                self.manifest_dict["quartus_preflow"]))
             if not os.path.exists(path):
-                logging.error("quartus_preflow file listed in "
-                              + os.getcwd() + " doesn't exist: "
-                              + path + ".\nExiting.")
-                quit()
+                raise Exception("quartus_preflow file listed in "
+                                + os.getcwd() + " doesn't exist: "
+                                + path + ".\nExiting.")
             preflow = '"' + 'quartus_sh:' + path + '"'
             command_list.append(self._emit_property(self.SET_GLOBAL_ASSIGNMENT,
-                                {'name_type': 'PRE_FLOW_SCRIPT_FILE',
-                                'name': preflow}))
+                                {'name': 'PRE_FLOW_SCRIPT_FILE',
+                                'value': preflow}))
         if "quartus_postmodule" in self.manifest_dict:
             path = shell.tclpath(path_mod.compose(
-                self.manifest_dict["quartus_postmodule"],
-                os.getcwd()))
+                self.manifest_dict["quartus_postmodule"]))
             if not os.path.exists(path):
-                logging.error("quartus_postmodule file listed in "
-                              + os.getcwd() + " doesn't exist: "
-                              + path + ".\nExiting.")
-                quit()
+                raise Exception("quartus_postmodule file listed in "
+                                + os.getcwd() + " doesn't exist: "
+                                + path + ".\nExiting.")
             postmodule = '"' + 'quartus_sh:' + path + '"'
             command_list.append(self._emit_property(self.SET_GLOBAL_ASSIGNMENT,
-                                {'name_type': 'POST_MODULE_SCRIPT_FILE',
-                                'name': postmodule}))
+                                {'name': 'POST_MODULE_SCRIPT_FILE',
+                                'value': postmodule}))
         if "quartus_postflow" in self.manifest_dict:
             path = shell.tclpath(path_mod.compose(
-                self.manifest_dict["quartus_postflow"], os.getcwd()))
+                self.manifest_dict["quartus_postflow"]))
             if not os.path.exists(path):
-                logging.error("quartus_postflow file listed in "
-                              + os.getcwd() + " doesn't exist: "
-                              + path + ".\nExiting.")
-                quit()
+                raise Exception("quartus_postflow file listed in "
+                                + os.getcwd() + " doesn't exist: "
+                                + path + ".\nExiting.")
             postflow = '"' + 'quartus_sh:' + path + '"'
             command_list.append(self._emit_property(self.SET_GLOBAL_ASSIGNMENT,
-                                {'name_type': 'POST_FLOW_SCRIPT_FILE',
-                                'name': postflow}))
+                                {'name': 'POST_FLOW_SCRIPT_FILE',
+                                'value': postflow}))
         self._tcl_controls["files"] = '\n'.join(command_list)
         super(ToolQuartus, self)._makefile_syn_files()

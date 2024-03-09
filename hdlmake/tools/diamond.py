@@ -25,11 +25,11 @@
 
 
 from __future__ import absolute_import
-from .make_syn import ToolSyn
-from hdlmake.srcfile import EDFFile, LPFFile, VHDLFile, VerilogFile
+from .makefilesyn import MakefileSyn
+from ..sourcefiles.srcfile import EDFFile, LPFFile, VHDLFile, VerilogFile
 
 
-class ToolDiamond(ToolSyn):
+class ToolDiamond(MakefileSyn):
 
     """Class providing the interface for Lattice Diamond synthesis"""
 
@@ -42,7 +42,7 @@ class ToolDiamond(ToolSyn):
 
     STANDARD_LIBS = ['ieee', 'std']
 
-    _LATTICE_SOURCE = 'prj_src {0} "$$filename"'
+    _LATTICE_SOURCE = 'prj_src {0} $(sourcefile)'
 
     SUPPORTED_FILES = {
         EDFFile: _LATTICE_SOURCE.format('add'),
@@ -63,7 +63,7 @@ class ToolDiamond(ToolSyn):
                     'save': 'prj_project save',
                     'close': 'prj_project close',
                     'project': '$(TCL_CREATE)\n'
-                               '$(TCL_FILES)\n'
+                               'source files.tcl\n'
                                '$(TCL_SAVE)\n'
                                '$(TCL_CLOSE)',
                     'par': '$(TCL_OPEN)\n'
@@ -79,11 +79,6 @@ class ToolDiamond(ToolSyn):
 
     def __init__(self):
         super(ToolDiamond, self).__init__()
-        self._tool_info.update(ToolDiamond.TOOL_INFO)
-        self._hdl_files.update(ToolDiamond.HDL_FILES)
-        self._supported_files.update(ToolDiamond.SUPPORTED_FILES)
-        self._standard_libs.extend(ToolDiamond.STANDARD_LIBS)
-        self._clean_targets.update(ToolDiamond.CLEAN_TARGETS)
         self._tcl_controls.update(ToolDiamond.TCL_CONTROLS)
 
     def _makefile_syn_tcl(self):
